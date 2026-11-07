@@ -7,28 +7,26 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import TypeVar, Optional
-
-from schema.config import Config, get_config
-from schema.exceptions import ProcessError
-
+from src.schema.config import Config, get_config
+from src.schema.exceptions import ProcessError
 #泛型
-T = TypeVar('T')   #类似Any
+T = TypeVar("T") # 类似Any
 
 class BaseNode(ABC):
 
-    name: str ="base_node"  #节点名称，子类可以覆盖
+    name:str ="base_node" # 节点名称，之类可以可以覆盖
 
-    def __init__(self, config: Optional[Config]=None) -> None:
-        self.config = config or get_config()   #配置对象
-        self.logger = logging.getLogger(f"{self.name}")  #日志对象
+    def __init__(self, config:Optional[Config]=None) -> None:
+        self.config = config or get_config() #配置对象
+        self.logger = logging.getLogger(f"{self.name}") #日志对象
 
-    def __call__(self, state: T) -> T:    #共性问题处理
+    def __call__(self, state:T) -> T:
         try:
-            self.logger.info(f"--------{self.name} 开始执行--------")
+            self.logger.info(f"-----{self.name} 开始执行----- ")
 
             result = self.process(state)
 
-            self.logger.info(f"--------{self.name} 执行完成--------")
+            self.logger.info(f"-----{self.name} 执行完成----- ")
 
             return result
         except ProcessError as e:
@@ -41,30 +39,23 @@ class BaseNode(ABC):
                 cause=e
             )
 
-    def log_step(self, step_name: str, message: str):
+    def log_step(self, step_name:str, message:str):
         """日志输出"""
         msg = f"{step_name}"
         if message:
-            msg += f":{message}"
+            msg += f": {message}"
         self.logger.info(msg)
-
 
     # 要求每个节点自己来完成特性能力的
     @abstractmethod
-    def process(self, state: T) -> T:
-        """每个子节点需要处理的特定业务逻辑"""
+    def process(self, state:T)->T:
+        """每个字节点需要处理的特定业务逻辑"""
         pass
-
-
 
 def setup_logging(level:Optional[int]=logging.INFO) -> None:
     """配置日志的级别"""
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
-
-
-
-
