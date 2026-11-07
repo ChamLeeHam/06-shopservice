@@ -9,6 +9,7 @@ class GraphState(TypedDict, total=False):
     """
     流程图状态
     包含整个流程中传递的所有数据
+    total=False     字段可选
     """
     # ==================== 任务标识 ====================
     session_id: str # 任务 ID，用于任务追踪
