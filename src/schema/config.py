@@ -22,6 +22,20 @@ class Config:
     openai_api_base:str = field(default_factory=lambda: os.getenv("OPENAI_BASE_URL",""))
     default_model:str = field(default_factory=lambda: os.getenv("DEFAULT_MODEL","gpt-4o"))
 
+    # MYSQL数据库的配置
+    mysql_host:str = field(default_factory=lambda: os.getenv("MYSQL_HOST","localhost"))
+    mysql_user:str = field(default_factory=lambda: os.getenv("MYSQL_USER","root"))
+    mysql_password:str = field(default_factory=lambda: os.getenv("MYSQL_PASSWORD",""))
+    mysql_port:str = field(default_factory=lambda: os.getenv("MYSQL_PORT","3306"))
+    mysql_database:str = field(default_factory=lambda: os.getenv("MYSQL_DATABASE","mall"))
+    mysql_charset:str = field(default_factory=lambda: os.getenv("MYSQL_CHARSET","utf8"))
+
+    #NEO4J的配置
+    neo4j_uri: str = field(default_factory=lambda: os.getenv("NEO4J_URI",""))
+    neo4j_user:str = field(default_factory=lambda: os.getenv("NEO4J_USERNAME","neo4j"))
+    neo4j_password:str = field(default_factory=lambda: os.getenv("NEO4J_PASSWORD",""))
+    neo4j_database: str = field(default_factory=lambda: os.getenv("NEO4J_DATABASE","neo4j"))
+
     #abstractmethod 抽象方法，之类必须实现
     @classmethod #类方法，不需要实例化就可以调用的方法
     def from_env(cls):

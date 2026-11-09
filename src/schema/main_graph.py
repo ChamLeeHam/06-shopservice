@@ -3,8 +3,14 @@
 """
 import sys
 from pathlib import Path
+
+
+
 PROJECT_ROOT= Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "external_lib"/"uie_pytorch"))
+
+from src.nodes.entity_extraction_node import EntityExtractionNode
 
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.graph import StateGraph, END
@@ -23,6 +29,7 @@ def create_query_graph()->CompiledStateGraph:
     nodes = {
         "entry_node": EntryNode(),
         "spell_check_node": SpellCheckNode(),
+        "entity_extraction_node": EntityExtractionNode()
     }
     # 2。 添加节点
     for name, node in nodes.items():
@@ -31,7 +38,8 @@ def create_query_graph()->CompiledStateGraph:
     # 3。添加边
     workflow.set_entry_point("entry_node")
     workflow.add_edge("entry_node", "spell_check_node")
-    workflow.add_edge("spell_check_node", END)
+    workflow.add_edge("spell_check_node", "entity_extraction_node")
+    workflow.add_edge("entity_extraction_node", END)
 
     # 4。构建图
     return workflow.compile()
@@ -55,7 +63,7 @@ def run_query(session_id, question:str):
 if __name__ == '__main__':
     setup_logging()
     # 执行工作流
-    question = "万豪万家浙江冬日两家浙江老牌房企。"
+    question = "小米12S Ultra 都有哪些版本。"
     result = run_query(session_id="123", question=question)
     print(result)
 
