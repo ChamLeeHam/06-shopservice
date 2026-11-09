@@ -19,7 +19,7 @@ class GraphState(TypedDict, total=False):
     corrected_text: str  # 纠错后的文本
     errors: List  # 错误列表
     explanation: str  # 修正说明
-    confidence: float  # 置信度
+    spell_confidence: float  # 置信度
 
     # ==================== 实体抽取 ====================
     entity: List  # 实体列表
@@ -39,7 +39,7 @@ GRAPH_DEFAULT_STATE: GraphState = {
     "corrected_text": "",
     "errors": [],
     "explanation": "",
-    "confidence": 1.0,
+    "spell_confidence": 1.0,
     "entity": [],
     "predicted_intent": "",
     "label_id": -1,

@@ -7,7 +7,7 @@ from langchain.agents import create_agent
 from langchain.tools import  tool
 import re
 
-from src.models.spell_models import CorrectionResult
+from src.models.spell_models import CorrectionResult, ErrorDetail
 from src.schema.base import BaseNode, T
 from src.schema.exceptions import ValidationError
 from src.schema.state import GraphState
@@ -71,8 +71,79 @@ class SpellCheckNode(BaseNode):
 
         return chunks if len(chunks) > 1 else [text]
 
+    def _levenshtein_distance(self, s1: str, s2: str) -> int:
+        """计算 Levenshtein 编辑距离"""
+
+        if len(s1) < len(s2):
+            return self._levenshtein_distance(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+
+        return previous_row[-1]
+
+    def _calculate_confidence(self, original: str, corrected: str) -> float:
+        """基于 ROUGE-L 和编辑距离计算置信度"""
+
+        if original == corrected:
+            return 1.0
+        from rouge_score import rouge_scorer
+        rs = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=False)
+
+        # ROUGE-L 相似度
+        # 维度1：ROUGE-L 相似度（语义保留度）
+        scores = rs.score(original, corrected)
+        rouge_l = scores['rougeL'].fmeasure #如果需要正式语义的相似项，建议使用embedding
+
+        # 编辑距离比例（越小表示改动越小，置信度越高）
+        edit_distance = self._levenshtein_distance(original, corrected)
+        max_len = max(len(original), len(corrected))
+
+        # 维度2：编辑距离比例（改动幅度）
+        edit_ratio = edit_distance / max_len if max_len > 0 else 1.0
+
+        # 综合置信度：基础值 + ROUGE 加成 - 编辑距离惩罚
+        base_confidence = 0.6
+        confidence = base_confidence + 0.3 * rouge_l - 0.2 * edit_ratio
+        return max(0.0, min(1.0, confidence))
+
     def _merge_corrections(self, chunks, results):
-        pass
+        """合并分块纠错结果（修复类型问题）"""
+        merged_text = ""
+        merged_errors = []  # 保持为 ErrorDetail 对象列表
+        offset = 0
+        for chunk, result in zip(chunks, results):
+            # 关键：offset基于原始块长度累加，而非修正后长度！
+            merged_text += result.corrected_text
+            # 修复：将字典转换回 ErrorDetail 对象
+            for error in result.errors:
+                # 创建新的 ErrorDetail 对象（保持Pydantic验证）
+                adjusted_error = ErrorDetail(
+                    position=error.position + offset,
+                    error_span=error.error_span,
+                    error_type=error.error_type,
+                    correction=error.correction,
+                    reason=error.reason
+                )
+                merged_errors.append(adjusted_error)
+            offset += len(chunk)
+        avg_confidence = sum(r.confidence for r in results) / len(results)
+        explanation = f"文本被分割为{len(chunks)}个语义块分别纠错，综合置信度:{avg_confidence: .2f}"
+        return CorrectionResult(
+            original_text="".join(chunks),
+            corrected_text=merged_text,
+            errors=merged_errors,  # 确保是 ErrorDetail 对象列表
+            confidence=avg_confidence,
+            explanation=explanation
+        )
     #定义智能需要的外部工具
     def _common_tools(self):
         # 专有名词验证器
@@ -148,13 +219,22 @@ class SpellCheckNode(BaseNode):
                     ]
                 })
 
+
+
                 result = response.get("structured_response")
-                # 设置了一个新的评分标准，用来衡量当前纠错的结果是否真的靠谱
 
                 if result is None:
                     continue
 
+
+                # 设置了一个新的评分标准，用来衡量当前纠错的结果是否真的靠谱
+                confidence = self._calculate_confidence(chunk, result.corrected_text)   #我们自己计算的一个评分
+
+                # 然后和模型的打分进行比对一下
+                result.confidence = min(confidence, result.confidence)
+
                 results.append(result)
+
             except Exception as e:
                 self.log_step(self.name, f"当前块{chunk}纠错失败！")
                 continue
@@ -167,4 +247,21 @@ class SpellCheckNode(BaseNode):
             #单块情况
             merged_result = results[0]
 
-        return state
+        if merged_result.confidence < 0.4:
+            self.log_step(self.name, f"纠错置信度太低，不采纳")
+            return {
+                "question": question,
+                "corrected_text": question,
+                "explanation": "纠错置信度太低，不采纳",
+                "spell_confidence": merged_result.confidence,
+                "errors": []
+            }
+        else:
+            return {
+                "question": question,
+                "corrected_text": merged_result.corrected_text,
+                "explanation": merged_result.explanation,
+                "spell_confidence": merged_result.confidence,
+                "errors": merged_result.errors
+            }
+
