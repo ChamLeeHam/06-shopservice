@@ -115,6 +115,16 @@ class SpellCheckNode(BaseNode):
         confidence = base_confidence + 0.3 * rouge_l - 0.2 * edit_ratio
         return max(0.0, min(1.0, confidence))
 
+    def _passthrough_result(self, chunk: str) -> CorrectionResult:
+        """纠错失败时的兜底结果：原样返回该块文本"""
+        return CorrectionResult(
+            original_text=chunk,
+            corrected_text=chunk,
+            errors=[],
+            confidence=1.0,
+            explanation="纠错失败，保留原文",
+        )
+
     def _merge_corrections(self, chunks, results):
         """合并分块纠错结果（修复类型问题）"""
         merged_text = ""
@@ -224,6 +234,8 @@ class SpellCheckNode(BaseNode):
                 result = response.get("structured_response")
 
                 if result is None:
+                    self.log_step(self.name, f"当前块{chunk}没有返回结构化结果，保留原文")
+                    results.append(self._passthrough_result(chunk))
                     continue
 
 
@@ -236,7 +248,9 @@ class SpellCheckNode(BaseNode):
                 results.append(result)
 
             except Exception as e:
-                self.log_step(self.name, f"当前块{chunk}纠错失败！")
+                self.log_step(self.name, f"当前块{chunk}纠错失败！原因：{type(e).__name__}: {e}，保留原文")
+                # 失败的块保留原文，保证 results 和 chunks 一一对应（合并时 zip 不会错位）
+                results.append(self._passthrough_result(chunk))
                 continue
 
         # 合并每个纠错之后的内容

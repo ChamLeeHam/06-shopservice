@@ -36,6 +36,9 @@ class Config:
     neo4j_password:str = field(default_factory=lambda: os.getenv("NEO4J_PASSWORD",""))
     neo4j_database: str = field(default_factory=lambda: os.getenv("NEO4J_DATABASE","neo4j"))
 
+    #schema的配置
+    schema:list = field(default_factory=lambda: [s.strip() for s in os.getenv("SCHEMA","").split(",") if s.strip()])
+
     #abstractmethod 抽象方法，之类必须实现
     @classmethod #类方法，不需要实例化就可以调用的方法
     def from_env(cls):
