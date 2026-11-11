@@ -25,6 +25,9 @@ class GraphState(TypedDict, total=False):
     entity: List  # 实体列表
 
     # ==================== 意图分类 ====================
+    intent_domain: str  # 意图领域
+    intent_confidence: float  # 意图置信度
+    human_requested:bool # 是否需要人工干预
     predicted_intent: str  # 意图
     label_id: int  # 意图 ID
     is_other: bool  # 是否为其他意图
@@ -42,6 +45,9 @@ GRAPH_DEFAULT_STATE: GraphState = {
     "spell_confidence": 1.0,
     "entity": [],
     "predicted_intent": "",
+    "intent_domain": "",
+    "intent_confidence": 1.0,
+    "human_requested": False,
     "label_id": -1,
     "is_other": False,
     "recommend_action": "",

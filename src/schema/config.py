@@ -55,6 +55,10 @@ class Config:
     # 意图配置
     intent_labels:list = field(default_factory=lambda: [s.strip() for s in os.getenv("INTENT_LABELS","").split(",") if s.strip()])
 
+    intent_threshold: float = field(
+        default_factory=lambda: float(os.getenv("INTENT_THRESHOLD", "0.7"))
+    )
+
     #abstractmethod 抽象方法，之类必须实现
     @classmethod #类方法，不需要实例化就可以调用的方法
     def from_env(cls):
