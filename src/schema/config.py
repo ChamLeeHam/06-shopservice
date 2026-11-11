@@ -16,6 +16,19 @@ class Config:
     log_dir: Path = ROOT_DIR / "logs" # 日志目录
     checkpoint_dir: Path = ROOT_DIR / "checkpoints"   #checkpoint目录
 
+    max_length: int = field(
+        default_factory=lambda: int(os.getenv("MAX_LENGTH", "128"))
+    )
+    batch_size: int = field(
+        default_factory=lambda: int(os.getenv("BATCH_SIZE", "15"))
+    )
+    epochs: int = field(
+        default_factory=lambda: int(os.getenv("EPOCHS", "3"))
+    )
+    learning_rate: float = field(
+        default_factory=lambda: float(os.getenv("LEARNING_RATE", "2e-5"))
+    )
+
 
     # 定义项目配置信息
     openai_api_key:str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY",""))
@@ -38,6 +51,9 @@ class Config:
 
     #schema的配置
     schema:list = field(default_factory=lambda: [s.strip() for s in os.getenv("SCHEMA","").split(",") if s.strip()])
+
+    # 意图配置
+    intent_labels:list = field(default_factory=lambda: [s.strip() for s in os.getenv("INTENT_LABELS","").split(",") if s.strip()])
 
     #abstractmethod 抽象方法，之类必须实现
     @classmethod #类方法，不需要实例化就可以调用的方法
